@@ -18,9 +18,8 @@ graph TD
         Pages["Cloudflare Pages\nSvelteKit PWA"]
     end
 
-    subgraph Fly.io
-        Nginx["Nginx\nReverse Proxy"]
-        API["Go API\nModular Monolith"]
+    subgraph "Google Cloud"
+        CloudRun["Cloud Run\nGo API"]
     end
 
     subgraph "Go API Modules"
@@ -48,15 +47,14 @@ graph TD
 
     User --> CF_CDN
     CF_CDN --> Pages
-    Pages --> Nginx
-    Nginx --> API
-    API --> Auth & Catalog & Inventory & Orders & Payments & Instagram & Media
+    Pages --> CloudRun
+    CloudRun --> Auth & Catalog & Inventory & Orders & Payments & Instagram & Media
     Auth & Catalog & Inventory & Orders --> Neon
     Payments --> Stripe
     Instagram --> IGEmbed
     Media --> R2
     GHA --> Pages
-    GHA --> Fly.io
+    GHA --> CloudRun
 ```
 
 ### Domain Modules
@@ -80,8 +78,7 @@ graph TD
 | Frontend | SvelteKit + `vite-plugin-pwa` | Fast, lightweight, installable PWA | Free |
 | Frontend hosting | Cloudflare Pages | Global CDN, zero egress fees | Free |
 | Backend | Go + chi router | Simple, fast, single binary | Free |
-| Backend hosting | Fly.io | Free tier, single deployment | Free |
-| Reverse proxy | Nginx (sidecar on Fly.io) | TLS termination, routing | Free |
+| Backend hosting | Google Cloud Run | 2M req/month free, scales to zero, managed TLS | Free |
 | Database | Neon PostgreSQL | Serverless, 0.5 GB free tier | Free |
 | Object storage | Cloudflare R2 | 10 GB free, no egress fees | Free |
 | Payments | Stripe Checkout | Hosted checkout, webhook fulfillment | $100 credit |
@@ -135,8 +132,8 @@ retrosnack/
 │   │   └── nginx.conf             # Reverse proxy config
 │   ├── docker/
 │   │   └── Dockerfile             # Multi-stage Go build
-│   └── fly/
-│       └── fly.toml               # Fly.io app configuration
+│   └── cloudrun/
+│       └── service.yaml           # Cloud Run service definition (Knative)
 │
 ├── docs/
 │   └── architecture/
@@ -145,7 +142,7 @@ retrosnack/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                 # Lint, test, build on PRs
-│       └── deploy.yml             # Deploy to Fly.io + Cloudflare Pages on main
+│       └── deploy.yml             # Deploy to Cloud Run + Cloudflare Pages on main
 │
 ├── docker-compose.yml             # Local development stack (Postgres, API, frontend)
 ├── sqlc.yaml                      # sqlc code generation config
@@ -221,16 +218,19 @@ retrosnack/
 - Push to `main` triggers GitHub Actions to build and deploy the SvelteKit app to Cloudflare Pages.
 - Global CDN distribution, zero egress fees, automatic HTTPS.
 
-### Fly.io (Backend API)
+### Google Cloud Run (Backend API)
 
 - Go binary built via multi-stage Docker build in `infrastructure/docker/Dockerfile`.
-- Nginx sidecar handles TLS termination and routes requests to the Go API.
-- Deployment config: `infrastructure/fly/fly.toml`.
-- Secrets (env vars) managed via `fly secrets set KEY=value`.
+- Cloud Run handles HTTPS termination natively — no nginx sidecar needed.
+- Service definition: `infrastructure/cloudrun/service.yaml`.
+- Secrets managed via Google Secret Manager and referenced as env vars in the service YAML.
+- Free tier: 2 million requests/month, 360,000 GB-seconds compute — sufficient for early traffic.
+- Scales to zero when idle; cold starts are fast (~200 ms) for a static Go binary.
+- Deploy via GitHub Actions using Workload Identity Federation (no long-lived service account keys).
 
 ### Neon PostgreSQL
 
-- Serverless PostgreSQL, connects from Fly.io via `DATABASE_URL`.
+- Serverless PostgreSQL, connects from Cloud Run via `DATABASE_URL`.
 - Free tier: 0.5 GB storage, auto-suspend when idle.
 
 ### Cloudflare R2
@@ -261,5 +261,14 @@ retrosnack/
 | `R2_PUBLIC_URL` | Public base URL for serving images | `https://media.retrosnack.shop` |
 | `PORT` | HTTP port for the Go API | `8080` |
 | `ENV` | Environment (`development`/`production`) | `production` |
+
+**GitHub Actions secrets (Cloud Run deployment):**
+
+| Secret | Description |
+|---|---|
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Federation provider resource name |
+| `GCP_SERVICE_ACCOUNT` | GCP service account email used for deployment |
+| `GCP_PROJECT_ID` | Google Cloud project ID |
+| `GCP_REGION` | Cloud Run region (e.g. `us-central1`) |
 
 Copy `.env.example` to `.env` for local development. Never commit `.env` to version control.
