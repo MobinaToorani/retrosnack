@@ -7,19 +7,25 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/MobinaToorani/retrosnack/pkg/httputil"
+	"github.com/MobinaToorani/retrosnack/pkg/middleware"
 )
 
 type Handler struct {
-	svc Service
+	svc       Service
+	jwtSecret string
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, jwtSecret string) *Handler {
+	return &Handler{svc: svc, jwtSecret: jwtSecret}
 }
 
 func (h *Handler) Register(r chi.Router) {
 	r.Post("/orders", h.createOrder)
-	r.Get("/orders/{id}", h.getOrder)
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(h.jwtSecret))
+		r.Get("/orders/{id}", h.getOrder)
+	})
 }
 
 func (h *Handler) createOrder(w http.ResponseWriter, r *http.Request) {

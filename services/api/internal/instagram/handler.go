@@ -7,19 +7,26 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/MobinaToorani/retrosnack/pkg/httputil"
+	"github.com/MobinaToorani/retrosnack/pkg/middleware"
 )
 
 type Handler struct {
-	svc Service
+	svc       Service
+	jwtSecret string
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, jwtSecret string) *Handler {
+	return &Handler{svc: svc, jwtSecret: jwtSecret}
 }
 
 func (h *Handler) Register(r chi.Router) {
 	r.Get("/products/{productId}/instagram", h.getEmbed)
-	r.Put("/products/{productId}/instagram", h.refreshEmbed)
+
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(h.jwtSecret))
+		r.Use(middleware.RequireRole("admin", "seller"))
+		r.Put("/products/{productId}/instagram", h.refreshEmbed)
+	})
 }
 
 func (h *Handler) getEmbed(w http.ResponseWriter, r *http.Request) {

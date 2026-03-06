@@ -71,6 +71,29 @@ func ClaimsFromContext(ctx context.Context) (*jwt.MapClaims, bool) {
 	return c, ok
 }
 
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := ClaimsFromContext(r.Context())
+			if !ok {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			m := (*claims)
+			role, _ := m["role"].(string)
+			for _, allowed := range roles {
+				if role == allowed {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			http.Error(w, "forbidden", http.StatusForbidden)
+		})
+	}
+}
+
 func isAllowedOrigin(origin string) bool {
 	allowed := []string{
 		"https://retrosnack.pages.dev",

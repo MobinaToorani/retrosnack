@@ -54,7 +54,7 @@ func main() {
 
 	catalogRepo := catalog.NewRepository(pool)
 	catalogSvc := catalog.NewService(catalogRepo)
-	catalogHandler := catalog.NewHandler(catalogSvc)
+	catalogHandler := catalog.NewHandler(catalogSvc, cfg.JWTSecret)
 
 	inventoryRepo := inventory.NewRepository(pool)
 	inventorySvc := inventory.NewService(inventoryRepo)
@@ -62,17 +62,17 @@ func main() {
 
 	ordersRepo := orders.NewRepository(pool)
 	ordersSvc := orders.NewService(ordersRepo, inventorySvc)
-	ordersHandler := orders.NewHandler(ordersSvc)
+	ordersHandler := orders.NewHandler(ordersSvc, cfg.JWTSecret)
 
 	paymentsSvc := payments.NewService(ordersSvc, cfg.StripeSecretKey, cfg.StripeWebhookSecret)
 	paymentsHandler := payments.NewHandler(paymentsSvc)
 
 	instagramRepo := instagram.NewRepository(pool)
 	instagramSvc := instagram.NewService(instagramRepo)
-	instagramHandler := instagram.NewHandler(instagramSvc)
+	instagramHandler := instagram.NewHandler(instagramSvc, cfg.JWTSecret)
 
 	mediaSvc := media.NewService(cfg)
-	mediaHandler := media.NewHandler(mediaSvc)
+	mediaHandler := media.NewHandler(mediaSvc, cfg.JWTSecret)
 
 	// Health monitoring
 	k, err := kenko.New(

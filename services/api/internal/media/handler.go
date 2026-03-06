@@ -7,20 +7,26 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/MobinaToorani/retrosnack/pkg/httputil"
+	"github.com/MobinaToorani/retrosnack/pkg/middleware"
 )
 
 const maxUploadSize = 10 << 20 // 10 MB
 
 type Handler struct {
-	svc Service
+	svc       Service
+	jwtSecret string
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, jwtSecret string) *Handler {
+	return &Handler{svc: svc, jwtSecret: jwtSecret}
 }
 
 func (h *Handler) Register(r chi.Router) {
-	r.Post("/products/{productId}/images", h.uploadImage)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(h.jwtSecret))
+		r.Use(middleware.RequireRole("admin", "seller"))
+		r.Post("/products/{productId}/images", h.uploadImage)
+	})
 }
 
 func (h *Handler) uploadImage(w http.ResponseWriter, r *http.Request) {
