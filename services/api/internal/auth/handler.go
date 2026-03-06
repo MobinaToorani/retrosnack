@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/MobinaToorani/retrosnack/pkg/httputil"
@@ -29,6 +31,11 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if msg := validateAuth(req.Email, req.Password); msg != "" {
+		httputil.ErrorMsg(w, http.StatusBadRequest, msg)
+		return
+	}
+
 	resp, err := h.svc.Register(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrEmailTaken) {
@@ -49,6 +56,11 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if msg := validateAuth(req.Email, req.Password); msg != "" {
+		httputil.ErrorMsg(w, http.StatusBadRequest, msg)
+		return
+	}
+
 	resp, err := h.svc.Login(r.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
@@ -60,4 +72,21 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.JSON(w, http.StatusOK, resp)
+}
+
+func validateAuth(email, password string) string {
+	email = strings.TrimSpace(email)
+	if email == "" {
+		return "email is required"
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		return "invalid email format"
+	}
+	if len(password) < 8 {
+		return "password must be at least 8 characters"
+	}
+	if len(password) > 72 {
+		return "password must be at most 72 characters"
+	}
+	return ""
 }
