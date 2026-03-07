@@ -21,7 +21,7 @@ type Order struct {
 	UserID          *uuid.UUID  `json:"user_id,omitempty"`
 	Status          Status      `json:"status"`
 	TotalCents      int64       `json:"total_cents"`
-	CheckoutSessionID string      `json:"checkout_session_id,omitempty"`
+	CheckoutSessionID *string     `json:"checkout_session_id,omitempty"`
 	Items           []OrderItem `json:"items"`
 	CreatedAt       time.Time   `json:"created_at"`
 	UpdatedAt       time.Time   `json:"updated_at"`
