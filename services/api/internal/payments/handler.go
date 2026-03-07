@@ -3,6 +3,7 @@ package payments
 import (
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -53,8 +54,8 @@ func (h *Handler) squareWebhook(w http.ResponseWriter, r *http.Request) {
 
 	signature := r.Header.Get("x-square-hmacsha256-signature")
 	if err := h.svc.HandleWebhook(r.Context(), payload, signature); err != nil {
-		httputil.Error(w, http.StatusBadRequest, err)
-		return
+		// log the error but return 200 so square doesn't retry permanent failures
+		slog.Error("webhook processing failed", "error", err)
 	}
 
 	httputil.NoContent(w)
