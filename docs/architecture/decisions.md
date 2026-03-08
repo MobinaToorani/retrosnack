@@ -9,7 +9,7 @@
 complexity (service discovery, distributed tracing, inter-service auth) without benefit at this scale.
 
 **Decision:** One Go binary with domain-separated packages (`internal/auth`, `internal/catalog`, etc.)
-that mirror microservice boundaries. Single Cloud Run deployment.
+that mirror microservice boundaries. Single Render deployment.
 
 **Consequences:** Simple deployment and debugging. Can be extracted to true microservices later by
 promoting each `internal/` package to its own repo and adding gRPC/HTTP transport.
@@ -109,21 +109,23 @@ No runtime reflection overhead.
 
 ---
 
-## ADR-008: Google Cloud Run over Fly.io for API Hosting
+## ADR-008: Render over Google Cloud Run for API Hosting
 
-**Status:** Accepted
-**Date:** 2026-03-05
+**Status:** Accepted (supersedes previous Cloud Run and Fly.io decisions)
+**Date:** 2026-03-07
 
-**Context:** Fly.io was the initial hosting choice but its free tier was removed — all apps now
-require a paid plan. A truly free alternative is needed for an early-stage project with low traffic.
+**Context:** Fly.io removed its free tier. Google Cloud Run's Workload Identity Federation proved
+problematic — new GCP accounts with non-Gmail emails are frequently flagged by automated ToS
+enforcement, making reliable setup difficult. A simpler, truly free alternative is needed.
 
-**Decision:** Google Cloud Run. Free tier: 2 million requests/month, 360,000 GB-seconds of compute,
-180,000 vCPU-seconds — enough for substantial early traffic at zero cost. Scales to zero when idle.
-Managed HTTPS, no nginx sidecar required. Secrets stored in Google Secret Manager and injected as
-env vars. GitHub Actions deploys via Workload Identity Federation (no long-lived service account keys).
+**Decision:** Render free tier. 750 hours/month, auto-deploy from GitHub on push to `main`.
+Docker-based deployment using the existing multi-stage Dockerfile. Managed HTTPS, no nginx
+sidecar required. Secrets managed via Render dashboard. UptimeRobot pings `/health` every 5 min
+to prevent idle sleep.
 
 **Consequences:**
-- Dockerfile production stage is simpler (just the Go binary, no nginx).
-- Cold starts are fast for a statically compiled Go binary (~200 ms).
-- Neon PostgreSQL connection must tolerate brief reconnection on cold start — `pgxpool` handles this.
-- GCP project setup required: Artifact Registry repo, Secret Manager secrets, WIF configuration.
+- Simplest deployment setup of all options — connect GitHub repo, set env vars, done.
+- Free tier sleeps after 15 min idle; UptimeRobot keep-warm eliminates this for active hours.
+- No GCP project, Artifact Registry, Secret Manager, or WIF configuration needed.
+- Cold starts after sleep are ~30s (Go binary boot + Neon connection); acceptable for low traffic.
+- Service blueprint defined in `render.yaml` at project root.

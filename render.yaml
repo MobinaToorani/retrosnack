@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: retrosnack-api
+    runtime: docker
+    dockerfilePath: infrastructure/docker/Dockerfile
+    dockerContext: .
+    dockerTarget: production
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SQUARE_ACCESS_TOKEN
+        sync: false
+      - key: SQUARE_LOCATION_ID
+        sync: false
+      - key: SQUARE_WEBHOOK_SIG_KEY
+        sync: false
+      - key: SQUARE_WEBHOOK_NOTIF_URL
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+    healthCheckPath: /health

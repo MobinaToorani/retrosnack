@@ -30,7 +30,7 @@ RUN go mod download
 CMD ["air", "-c", ".air.toml"]
 
 # ──────────────────────────────────────────────────────────────
-# Stage: production (Cloud Run — TLS terminated by GCP, no nginx needed)
+# Stage: production (Render — TLS terminated by platform, no nginx needed)
 # ──────────────────────────────────────────────────────────────
 FROM alpine:3.21 AS production
 
